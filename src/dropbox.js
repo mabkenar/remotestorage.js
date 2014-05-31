@@ -60,7 +60,7 @@
    * propagateDelete : deleta a value and propagate
    * _activatePropagation : replace set and delete with their propagate versions
    *************************/
-  function LowerCaseCache(defaultValue){
+  function LowerCaseCache(defaultValue) {
     this.defaultValue = defaultValue; //defaults to undefimned if initialized without arguments
     this._storage = { };
     this.set = this.justSet;
@@ -71,12 +71,13 @@
     get : function(key) {
       key = key.toLowerCase();
       var stored = this._storage[key];
-      if (typeof stored === 'undefined'){
+      if (typeof stored === 'undefined') {
         stored = this.defaultValue;
         this._storage[key] = stored;
       }
       return stored;
     },
+
     propagateSet : function(key, value) {
       key = key.toLowerCase();
       if (this._storage[key] === value) {
@@ -85,30 +86,35 @@
       this._propagate(key, value);
       return this._storage[key] = value;
     },
+
     propagateDelete : function(key) {
       key = key.toLowerCase();
       this._propagate(key, this._storage[key]);
       return delete this._storage[key];
     },
+
     _activatePropagation: function(){
       this.set = this.propagateSet;
       this.delete = this.propagateDelete;
       return true;
     },
+
     justSet : function(key, value) {
       key = key.toLowerCase();
       return this._storage[key] = value;
     },
+
     justDelete : function(key, value) {
       key = key.toLowerCase();
       return delete this._storage[key];
     },
-    _propagate: function(key, rev){
+
+    _propagate: function(key, rev) {
       var folders = key.split('/').slice(0,-1);
       var len = folders.length;
       var path = '';
 
-      for (var i = 0; i < len; i++){
+      for (var i = 0; i < len; i++) {
         path += folders[i]+'/';
         if (!rev) {
           rev = this._storage[path]+1;
@@ -142,7 +148,7 @@
     this.rs = rs;
     var self = this;
 
-    onErrorCb = function(error){
+    onErrorCb = function(error) {
       if (error instanceof RemoteStorage.Unauthorized) {
         self.configure(null,null,null,null);
       }
@@ -160,14 +166,17 @@
       var settings;
       try {
         settings = JSON.parse(localStorage[SETTINGS_KEY]);
-      } catch(e){}
+      } catch(e) {}
+
       if (settings) {
         this.configure(settings.userAddress, undefined, undefined, settings.token);
       }
+
       try {
         this._itemRefs = JSON.parse(localStorage[ SETTINGS_KEY+':shares' ]);
-      } catch(e) {  }
+      } catch(e) {}
     }
+
     if (this.connected) {
       setTimeout(this._emit.bind(this), 0, 'connected');
     }
@@ -202,8 +211,8 @@
 
       if (this.token){
         this.connected = true;
-        if ( !this.userAddress ){
-          this.info().then(function(info){
+        if (!this.userAddress) {
+          this.info().then(function(info) {
             this.userAddress = info.display_name;
             //FIXME propagate this to the view
           }.bind(this));
@@ -212,56 +221,66 @@
       } else {
         this.connected = false;
       }
-      if (hasLocalStorage){
-        localStorage[SETTINGS_KEY] = JSON.stringify( { token: this.token,
-                                                       userAddress: this.userAddress } );
+
+      if (hasLocalStorage) {
+        localStorage[SETTINGS_KEY] = JSON.stringify({
+          token: this.token,
+          userAddress: this.userAddress
+        });
       }
     },
-    
+
     stopWaitingForToken: function() {
       if (!this.connected) {
         this._emit('not-connected');
       }
     },
-    
+
     /**
      * Method : _getFolder(path, options)
      **/
-    _getFolder: function(path, options){
+    _getFolder: function(path, options) {
       var url = 'https://api.dropbox.com/1/metadata/auto'+path;
       var promise = promising();
       var revCache = this._revCache;
-      this._request('GET', url, {}, function(err, resp){
-        if (err){
+
+      this._request('GET', url, {}, function(err, resp) {
+        if (err) {
           promise.reject(err);
-        }else{
-          var status = resp.status;
-          if (status === 304) {
-            promise.fulfill(status);
-            return;
-          }
-          var listing, body, mime, rev;
-          try{
-            body = JSON.parse(resp.responseText);
-          } catch(e) {
-            promise.reject(e);
-            return;
-          }
-          rev = this._revCache.get(path);
-          mime = 'application/json; charset=UTF-8';
-          if (body.contents) {
-            listing = body.contents.reduce(function(m, item) {
-              var itemName = item.path.split('/').slice(-1)[0] + ( item.is_dir ? '/' : '' );
-              if (item.is_dir){
-                m[itemName] = { ETag: revCache.get(path+itemName) };
-              } else {
-                m[itemName] = { ETag: item.rev };
-              }
-              return m;
-            }, {});
-          }
-          promise.fulfill(status, listing, mime, rev);
+          return;
         }
+
+        var status = resp.status;
+        var listing, body, mime, rev;
+
+        if (status === 304) {
+          promise.fulfill(status);
+          return;
+        }
+
+        try {
+          body = JSON.parse(resp.responseText);
+        } catch(e) {
+          promise.reject(e);
+          return;
+        }
+
+        rev = this._revCache.get(path);
+        mime = 'application/json; charset=UTF-8';
+
+        if (body.contents) {
+          listing = body.contents.reduce(function(m, item) {
+            var itemName = item.path.split('/').slice(-1)[0] + ( item.is_dir ? '/' : '' );
+            if (item.is_dir) {
+              m[itemName] = { ETag: revCache.get(path+itemName) };
+            } else {
+              m[itemName] = { ETag: item.rev };
+            }
+            return m;
+          }, {});
+        }
+
+        promise.fulfill(status, listing, mime, rev);
       });
       return promise;
     },
@@ -272,71 +291,79 @@
      *   calls _getFolder if file is a folder
      *   calls share(path) afterwards to fill the _hrefCache
      **/
-    get: function(path, options){
-      if (! this.connected) { throw new Error("not connected (path: " + path + ")"); }
+    get: function(path, options) {
+      if (!this.connected) {
+        throw new Error("not connected (path: " + path + ")");
+      }
+
       path = cleanPath(path);
       var url = 'https://api-content.dropbox.com/1/files/auto' + path;
       var promise = this._sharePromise(path);
-
       var savedRev = this._revCache.get(path);
+
+      //file was deleted server side
       if (savedRev === null) {
-        //file was deleted server side
         promise.fulfill(404);
         return promise;
       }
+
+      // nothing changed.
       if (options && options.ifNoneMatch &&
-         savedRev && (savedRev === options.ifNoneMatch)) {
-        // nothing changed.
+          savedRev && (savedRev === options.ifNoneMatch)) {
         promise.fulfill(304);
         return promise;
       }
 
       //use _getFolder for folders
-      if (path.substr(-1) === '/') { return this._getFolder(path, options); }
+      if (path.substr(-1) === '/') {
+        return this._getFolder(path, options);
+      }
 
-      this._request('GET', url, {}, function(err, resp){
+      this._request('GET', url, {}, function(err, resp) {
         if (err) {
           promise.reject(err);
-        } else {
-          var status = resp.status;
-          var meta, body, mime, rev;
-          if (status === 404){
-            promise.fulfill(404);
-          } else if (status === 200) {
-            body = resp.responseText;
-            try {
-              meta = JSON.parse( resp.getResponseHeader('x-dropbox-metadata') );
-            } catch(e) {
-              promise.reject(e);
-              return;
-            }
-            mime = meta.mime_type; //resp.getResponseHeader('Content-Type');
-            rev = meta.rev;
-            this._revCache.set(path, rev);
+          return;
+        }
 
-            // handling binary
-            if ((! resp.getResponseHeader('Content-Type') ) || resp.getResponseHeader('Content-Type').match(/charset=binary/)) {
-              RS.WireClient.readBinaryData(resp.response, mime, function(result) {
-                promise.fulfill(status, result, mime, rev);
-              });
-            } else {
-              // handling json (always try)
-              if (mime && mime.search('application/json') >= 0 || true) {
-                try {
-                  body = JSON.parse(body);
-                  mime = 'application/json; charset=UTF-8';
-                } catch(e) {
-                  //Failed parsing Json, assume it is something else then
-                }
-              }
-              promise.fulfill(status, body, mime, rev);
-            }
+        var status = resp.status;
+        var meta, body, mime, rev;
 
-          } else {
-            promise.fulfill(status);
+        if (status === 200) {
+          body = resp.responseText;
+          try {
+            meta = JSON.parse( resp.getResponseHeader('x-dropbox-metadata') );
+          } catch(e) {
+            promise.reject(e);
+            return;
           }
+
+          mime = meta.mime_type; //resp.getResponseHeader('Content-Type');
+          rev = meta.rev;
+          this._revCache.set(path, rev);
+
+          // handling binary
+          if (!resp.getResponseHeader('Content-Type') ||
+              resp.getResponseHeader('Content-Type').match(/charset=binary/)) {
+            RS.WireClient.readBinaryData(resp.response, mime, function(result) {
+              promise.fulfill(status, result, mime, rev);
+            });
+          } else {
+            // handling json (always try)
+            if (mime && mime.search('application/json') >= 0 || true) {
+              try {
+                body = JSON.parse(body);
+                mime = 'application/json; charset=UTF-8';
+              } catch(e) {
+                //Failed parsing Json, assume it is something else then
+              }
+            }
+            promise.fulfill(status, body, mime, rev);
+          }
+        } else {
+          promise.fulfill(status);
         }
       });
+
       return promise;
     },
     /**
@@ -345,12 +372,14 @@
      *   also uses _revCache to check for version conflicts
      *   also shares via share(path)
      **/
-    put: function(path, body, contentType, options){
-      if (! this.connected) { throw new Error("not connected (path: " + path + ")"); }
+    put: function(path, body, contentType, options) {
+      if (!this.connected) {
+        throw new Error("not connected (path: " + path + ")");
+      }
+
       var pathTempBeforeClean = path; // Temp variable to store the value beafore cleanPath, to be used later
       path = cleanPath(path);
 
-      var self = this;
       var promise = this._sharePromise(path);
       var revCache = this._revCache;
 
@@ -361,23 +390,28 @@
         promise.fulfill(412, undefined, undefined, savedRev);
         return promise;
       }
+
       if (options && (options.ifNoneMatch === '*') &&
           savedRev && (savedRev !== 'rev')) {
         promise.fulfill(412, undefined, undefined, savedRev);
         return promise;
       }
-      if (! contentType.match(/charset=/)) {
+
+      if (!contentType.match(/charset=/)) {
         contentType += '; charset=' + ((body instanceof ArrayBuffer || RS.WireClient.isArrayBufferView(body)) ? 'binary' : 'utf-8');
       }
+
       var url = 'https://api-content.dropbox.com/1/files_put/auto' + path + '?';
       if (options && options.ifMatch) {
         url += "parent_rev="+encodeURIComponent(options.ifMatch);
       }
-      if (body.length>150*1024*1024){ //FIXME actual content-length
+
+      if (body.length > 150*1024*1024) { //FIXME actual content-length
         //https://www.dropbox.com/developers/core/docs#chunked-upload
         RemoteStorage.log('files larger than 150MB not supported yet');
       } else {
         var promiseMetadata = promising();
+
         if (options && (options.ifMatch || (options.ifNoneMatch === '*'))) {
           this._getMetadata(pathTempBeforeClean).then(function(metadata) {
             promiseMetadata.fulfill(metadata);
@@ -392,34 +426,40 @@
             promise.fulfill(412, undefined, undefined, metadata.rev);
             return;
           }
+
           if (options && options.ifMatch && metadata && (metadata.rev !== options.ifMatch)) {
             promise.fulfill(412, undefined, undefined, metadata.rev);
             return;
           }
-          self._request('PUT', url, {body:body, headers:{'Content-Type':contentType}}, function(err, resp) {
+
+          this._request('PUT', url, {
+			      body: body,
+			      headers: { 'Content-Type': contentType }
+          }, function(err, resp) {
             if (err) {
               promise.reject(err);
-            } else {
-              var response = JSON.parse(resp.responseText);
-              if (response.path === pathTempBeforeClean) {
-                revCache.propagateSet(path, response.rev);
-                promise.fulfill(resp.status);
-              } else {
-                // Conflict happened. Delete the copy created by Dropbox
-                var deleteUrl = 'https://api.dropbox.com/1/fileops/delete?root=auto&path=' + encodeURIComponent(response.path);
-                self._request('POST', deleteUrl, {}, function() {});
-
-                // If we got into this situation here, then it means that the
-                // file changed between the metadata request and this PUT
-                // request. Because of that the previously requested metadata
-                // cannot be reused here and a new request has to be made:
-                self._getMetadata(path).then(function(metadata) {
-                  promise.fulfill(412, undefined, undefined, metadata.rev);
-                });
-              }
+              return;
             }
-          });
-        });
+
+            var response = JSON.parse(resp.responseText);
+            if (response.path === pathTempBeforeClean) {
+              revCache.propagateSet(path, response.rev);
+              promise.fulfill(resp.status);
+            } else {
+              // Conflict happened. Delete the copy created by Dropbox
+              var deleteUrl = 'https://api.dropbox.com/1/fileops/delete?root=auto&path=' + encodeURIComponent(response.path);
+              this._request('POST', deleteUrl, {}, function() {});
+
+              // If we got into this situation here, then it means that the
+              // file changed between the metadata request and this PUT
+              // request. Because of that the previously requested metadata
+              // cannot be reused here and a new request has to be made:
+              this._getMetadata(path).then(function(metadata) {
+                promise.fulfill(412, undefined, undefined, metadata.rev);
+              });
+            }
+          }.bind(this));
+        }.bind(this));
       }
       return promise;
     },
@@ -428,16 +468,19 @@
      * Method : delete(path, options)
      *   similar to get and set
      **/
-    'delete': function(path, options){
-      if (! this.connected) { throw new Error("not connected (path: " + path + ")"); }
+    'delete': function(path, options) {
+      if (!this.connected) {
+        throw new Error("not connected (path: " + path + ")");
+      }
+
       var pathTempBeforeClean = path; // Temp variable to store the value before cleanPath, to be used later
       path = cleanPath(path);
 
-      var self = this;
       var promise = promising();
       var revCache = this._revCache;
-      //check if file has changed and return 412
       var savedRev = revCache.get(path);
+
+      //check if file has changed and return 412
       if (options && options.ifMatch &&
           savedRev && (options.ifMatch !== savedRev)) {
         promise.fulfill(412, undefined, undefined, savedRev);
@@ -460,7 +503,7 @@
         }
 
         var url = 'https://api.dropbox.com/1/fileops/delete?root=auto&path=' + encodeURIComponent(pathTempBeforeClean);
-        self._request('POST', url, {}, function(err, resp){
+        this._request('POST', url, {}, function(err, resp) {
           if (err) {
             promise.reject(error);
           } else {
@@ -468,9 +511,9 @@
             revCache.delete(path);
           }
         });
-      });
+      }.bind(this));
 
-      return promise.then(function(){
+      return promise.then(function() {
         var args = Array.prototype.slice.call(arguments);
         delete this._itemRefs[path];
         var p = promising();
@@ -485,7 +528,7 @@
      *
      *  also checks for necessity of shareing this url(already in the itemRefs or not '/public/')
      **/
-    _sharePromise: function(path){
+    _sharePromise: function(path) {
       var promise = promising();
       var self = this;
       if (path.match(/^\/public\/.*[^\/]$/) && typeof this._itemRefs[path] === 'undefined') {
@@ -508,19 +551,19 @@
      *   get sher_url s from dropbox and pushes those into this._hrefCache
      *   returns promise
      */
-    share: function(path){
+    share: function(path) {
       var url = "https://api.dropbox.com/1/media/auto"+path;
       var promise = promising();
       var itemRefs = this._itemRefs;
 
       // requesting shareing url
-      this._request('POST', url, {}, function(err, resp){
+      this._request('POST', url, {}, function(err, resp) {
         if (err) {
           RemoteStorage.log(err);
           err.message = 'Shareing Dropbox Thingie("'+path+'") failed' + err.message;
           promise.reject(err);
         } else {
-          try{
+          try {
             var response = JSON.parse(resp.responseText);
             var url = response.url;
             itemRefs[path] = url;
@@ -545,16 +588,17 @@
       var url = 'https://api.dropbox.com/1/account/info';
       var promise = promising();
       // requesting user info(mainly for userAdress)
-      this._request('GET', url, {}, function(err, resp){
+      this._request('GET', url, {}, function(err, resp) {
         if (err) {
           promise.reject(err);
-        } else {
-          try {
-            var info = JSON.parse(resp.responseText);
-            promise.fulfill(info);
-          } catch(e) {
-            promise.reject(err);
-          }
+          return;
+        }
+
+        try {
+          var info = JSON.parse(resp.responseText);
+          promise.fulfill(info);
+        } catch(e) {
+          promise.reject(err);
         }
       });
       return promise;
@@ -584,7 +628,7 @@
     fetchDelta: function() {
       var args = Array.prototype.slice.call(arguments);
       var promise = promising();
-      var self = this;
+
       this._request('POST', 'https://api.dropbox.com/1/delta', {
         body: this._deltaCursor ? ('cursor=' + encodeURIComponent(this._deltaCursor)) : '',
         headers: {
@@ -595,64 +639,68 @@
           this.rs.log('fetchDeltas',error);
           this.rs._emit('error', new RemoteStorage.SyncError('fetchDeltas failed'+error));
           promise.reject(error);
-        } else {
-          // break if status != 200
-          if (response.status !== 200 ) {
-            if (response.status === 400) {
-              this.rs._emit('error', new RemoteStorage.Unauthorized());
-              promise.fulfill.apply(promise, args);
-            } else {
-              promise.reject("dropbox.fetchDelta returned "+response.status+response.responseText);
-            }
-            return promise;
-          }
-
-          var delta;
-          try {
-            delta = JSON.parse(response.responseText);
-          } catch(error) {
-            RS.log('fetchDeltas can not parse response',error);
-            return promise.reject("can not parse response of fetchDelta : "+error.message);
-          }
-          // break if no entries found
-          if (!delta.entries) {
-            return promise.reject('dropbox.fetchDeltas failed, no entries found');
-          }
-
-          // Dropbox sends the complete state
-          if (delta.reset) {
-            this._revCache = new LowerCaseCache('rev');
-            promise.then(function(){
-              var args = Array.prototype.slice.call(arguments);
-              self._revCache._activatePropagation();
-              var p = promising();
-              return p.fulfill.apply(p,args);
-            });
-          }
-
-          //saving the cursor for requesting further deltas in relation to the cursor position
-          if (delta.cursor) {
-            this._deltaCursor = delta.cursor;
-          }
-
-          //updating revCache
-          RemoteStorage.log("Delta : ",delta.entries);
-          delta.entries.forEach(function(entry) {
-            var path = entry[0];
-            var rev;
-            if (!entry[1]){
-              rev = null;
-            } else {
-              if (entry[1].is_dir) {
-                return;
-              }
-              rev = entry[1].rev;
-            }
-            self._revCache.set(path, rev);
-          });
-          promise.fulfill.apply(promise, args);
+          return;
         }
-      });
+
+        // break if status != 200
+        if (response.status !== 200 ) {
+          if (response.status === 400) {
+            this.rs._emit('error', new RemoteStorage.Unauthorized());
+            promise.fulfill.apply(promise, args);
+          } else {
+            promise.reject("dropbox.fetchDelta returned "+response.status+response.responseText);
+          }
+          return promise;
+        }
+
+        var delta;
+        try {
+          delta = JSON.parse(response.responseText);
+        } catch(error) {
+          RS.log('fetchDeltas can not parse response',error);
+          return promise.reject("can not parse response of fetchDelta : "+error.message);
+        }
+
+        // break if no entries found
+        if (!delta.entries) {
+          return promise.reject('dropbox.fetchDeltas failed, no entries found');
+        }
+
+        // Dropbox sends the complete state
+        if (delta.reset) {
+          this._revCache = new LowerCaseCache('rev');
+          promise.then(function(){
+            var args = Array.prototype.slice.call(arguments);
+            this._revCache._activatePropagation();
+            var p = promising();
+            return p.fulfill.apply(p,args);
+          }.bind(this));
+        }
+
+        //saving the cursor for requesting further deltas in relation to the cursor position
+        if (delta.cursor) {
+          this._deltaCursor = delta.cursor;
+        }
+
+        //updating revCache
+        RemoteStorage.log("Delta : ",delta.entries);
+        delta.entries.forEach(function(entry) {
+          var path = entry[0];
+          var rev;
+          if (!entry[1]){
+            rev = null;
+          } else {
+            if (entry[1].is_dir) {
+              return;
+            }
+            rev = entry[1].rev;
+          }
+          this._revCache.set(path, rev);
+        }.bind(this));
+
+        promise.fulfill.apply(promise, args);
+      }.bind(this));
+
       return promise;
     },
 
@@ -662,14 +710,17 @@
       var cached = this._metadataCache[path];
       var url = 'https://api.dropbox.com/1/metadata/auto' + cleanPath(path);
       url += '?list=' + ((options && options.list) ? 'true' : 'false');
+
       if (cached && cached.hash) {
         url += '&hash=' + encodeURIComponent(cached.hash);
       }
+
       this._request('GET', url, {}, function(err, resp) {
         if (err) {
           promise.reject(err);
           return;
         }
+
         if (resp.status === 304) {
           promise.fulfill(cached);
         } else if (resp.status === 200) {
@@ -693,7 +744,7 @@
     rs._dropboxOrigSync = rs.sync.bind(rs);
     rs.sync = function() {
       return this.dropbox.fetchDelta.apply(this.dropbox, arguments).
-        then(rs._dropboxOrigSync, function(err){
+        then(rs._dropboxOrigSync, function(err) {
           rs._emit('error', new rs.SyncError(err));
         });
     };
@@ -710,32 +761,32 @@
   function hookGetItemURL(rs) {
     if (rs._origBaseClientGetItemURL) { return; }
     rs._origBaseClientGetItemURL = RS.BaseClient.prototype.getItemURL;
-    RS.BaseClient.prototype.getItemURL = function(path){
+    RS.BaseClient.prototype.getItemURL = function(path) {
       var ret = rs.dropbox._itemRefs[path];
       return  ret ? ret : '';
     };
   }
 
-  function unHookGetItemURL(rs){
+  function unHookGetItemURL(rs) {
     if (! rs._origBaseClieNtGetItemURL) { return; }
     RS.BaseClient.prototype.getItemURL = rs._origBaseClietGetItemURL;
     delete rs._origBaseClietGetItemURL;
   }
 
-  function hookRemote(rs){
+  function hookRemote(rs) {
     if (rs._origRemote) { return; }
     rs._origRemote = rs.remote;
     rs.remote = rs.dropbox;
   }
 
-  function unHookRemote(rs){
+  function unHookRemote(rs) {
     if (rs._origRemote) {
       rs.remote = rs._origRemote;
       delete rs._origRemote;
     }
   }
 
-  function hookIt(rs){
+  function hookIt(rs) {
     hookRemote(rs);
     if (rs.sync) {
       hookSync(rs);
@@ -743,7 +794,7 @@
     hookGetItemURL(rs);
   }
 
-  function unHookIt(rs){
+  function unHookIt(rs) {
     unHookRemote(rs);
     unHookSync(rs);
     unHookGetItemURL(rs);
@@ -765,7 +816,7 @@
 
   RS.Dropbox._rs_cleanup = function(rs) {
     unHookIt(rs);
-    if (hasLocalStorage){
+    if (hasLocalStorage) {
       delete localStorage[SETTINGS_KEY];
     }
     rs.removeEventListener('error', onErrorCb);

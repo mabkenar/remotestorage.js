@@ -187,32 +187,27 @@
      *   (end code)
      */
     getAll: function(path, maxAge) {
-      if (typeof(path) !== 'string') {
-        path = '';
-      } else if (path.length > 0 && path[path.length - 1] !== '/') {
-        throw "Not a folder: " + path;
-      }
+      return this.getListing(path, maxAge).then(function(body) {
+        var promise = promising();
+        var count = Object.keys(body).length, i = 0;
 
-      return this.storage.get(this.makePath(path), maxAge).then(function(status, body) {
-        if (status === 404) { return {}; }
-        if (typeof(body) === 'object') {
-          var promise = promising();
-          var count = Object.keys(body).length, i = 0;
-          if (count === 0) {
-            // treat this like 404. it probably means a folder listing that
-            // has changes that haven't been pushed out yet.
-            return {};
-          }
-          for (var key in body) {
-            this.storage.get(this.makePath(path + key), maxAge).
-              then(function(status, b) {
-                body[this.key] = b;
-                i++;
-                if (i === count) { promise.fulfill(body); }
-              }.bind({ key: key }));
-          }
-          return promise;
+        if (count === 0) {
+          // treat this like 404. it probably means a folder listing that
+          // has changes that haven't been pushed out yet.
+          return {};
         }
+
+        for (var key in body) {
+          this.storage.get(this.makePath(path + key), maxAge).then(function(status, b) {
+            body[this.key] = b;
+            i++;
+            if (i === count) {
+              promise.fulfill(body);
+            }
+          }.bind({ key: key }));
+        }
+
+        return promise;
       }.bind(this));
     },
 

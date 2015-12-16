@@ -11,7 +11,7 @@
   },
   "homepage": "http://remotestorage.io",
   "devDependencies": {
-    "jaribu": "^2.0.0",
+    "jaribu": "^2.1.2",
     "uglify-js": "^2.5.0"
   },
   "scripts": {

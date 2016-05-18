@@ -1,6 +1,6 @@
 #  Using the AMD build of remotestorage.js 
 
-We provide a build of remotestorage.js that works with AMD. External dependencies must be provided for this build of the library to work.
+We provide a build of remotestorage.js that works with [AMD](https://en.wikipedia.org/wiki/Asynchronous_module_definition). External dependencies must be provided for this build of the library to work.
 
 # Release
 

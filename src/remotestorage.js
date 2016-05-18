@@ -285,7 +285,7 @@
      *
      *   connected   - Boolean, whether or not a remote store is connected
      *   online      - Boolean, whether last sync action was successful or not
-     *   userAddress - String, the user address of the connected user
+     *   userAddress - String, the user address of the connected user as provided for login (e.g. "walt@5apps.com")
      *   properties  - String, the properties of the WebFinger link
      */
 

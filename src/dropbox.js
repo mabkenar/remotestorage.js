@@ -714,8 +714,8 @@
       }, function (err) {
         this.rs.log('fetchDeltas', err);
         this.rs._emit('error', new RemoteStorage.SyncError('fetchDeltas failed.' + err));
-        promise.reject(err);
-      }).then(function () {
+        return Promise.resolve(args);
+      }.bind(this)).then(function () {
         if (self._revCache) {
           var args = Array.prototype.slice.call(arguments);
           self._revCache._activatePropagation();
@@ -872,6 +872,7 @@
       return this.dropbox.fetchDelta.apply(this.dropbox, arguments).
         then(rs._dropboxOrigSync, function (err) {
           rs._emit('error', new RemoteStorage.SyncError(err));
+          return Promise.reject(err);
         });
     }.bind(rs);
   }
